@@ -1,0 +1,29 @@
+{% extends 'home.html'%}
+
+{% block title%}Удаление рассылки{% endblock %}
+{% load static %}
+{% block content %}
+
+<div class="d-flex justify-content-center  ">
+    <div class="col-5">
+        <div class="card mb-4 box-shadow">
+            <div class="card-header bg-danger text-white">
+                <h3 class="my-0 font-weight-normal text-center">! Внимание !</h3>
+            </div>
+            <div class="container  text-center">
+                <h3>Подтвердите удаление сообщения "{{ object.name }}"</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="p-2 btn btn-outline-danger fixed-size-btn"> Удалить</button>
+                    <a href="/newsletter_list/" class="p-2 btn btn-outline-dark fixed-size-btn">Отмена</a>
+                </form>
+
+
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+</div>
+
+
+{% endblock %}

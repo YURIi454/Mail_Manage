@@ -1,0 +1,26 @@
+{% extends 'home.html'%}
+{% block title%}Редактирование{% endblock %}
+{% load static %}
+{% block navigation_buttons %}
+    <a class="p-2 btn btn-outline-dark fixed-size-btn" href="{% url 'mailing:home' %}">Назад</a>
+    <a class="p-2 btn btn-outline-dark fixed-size-btn" href="{% url 'users:detail_user' %}">Просмотр</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="container col-4">
+    <div class="card-body " >
+        <div class="card-header">
+            <h2 class="my-0 font-weight-normal text-center">Редактирование профиля - {{ user.username }}</h2>
+        </div>
+        <div class="container  text-center mb-3 py-3">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="p-2 btn btn-outline-dark fixed-size-btn"> Сохранить</button>
+                <a href="{% url 'mailing:statistic' %}" class="p-2 btn btn-outline-dark fixed-size-btn">Отмена</a>
+            </form>
+        </div>
+        </div>
+        </div>
+        {% endblock %}

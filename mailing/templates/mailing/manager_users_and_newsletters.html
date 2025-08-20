@@ -1,0 +1,27 @@
+{% extends 'home.html'%}
+{% block title%}Статистика{% endblock %}
+<h1>Все пользователи и их рассылки</h1>
+
+    {% if users %}
+        <ul>
+            {% for user in users %}
+                <li>
+                    <strong>Пользователь:</strong> {{ user.email }}
+                    <ul>
+                        {% if user.newsletter_set.exists %}
+                            <li><strong>Рассылки:</strong></li>
+                            {% for newsletter in user.newsletter_set.all %}
+                                <li>- {{ newsletter.name }}: {{ newsletter.get_status_display }}</li>
+                            {% endfor %}
+                        {% else %}
+                            <li>Нет созданных рассылок.</li>
+                        {% endif %}
+                    </ul>
+                </li>
+            {% empty %}
+                <p>Нет зарегистрированных пользователей.</p>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Ничего не найдено.</p>
+    {% endif %}

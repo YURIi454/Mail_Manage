@@ -1,0 +1,40 @@
+{% extends 'home.html'%}
+{% block title%}Статистика{% endblock %}
+
+{% block content %}
+<div style=" display: flex; justify-content: center; align-items: center; height: 70vh; ">
+    {% if request.user.is_authenticated %}
+
+    <div>
+        <h2> Привет, {{ user.username }} !</h2>
+        <h4> Ваш отчёт о работе сервиса</h4>
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col"></th>
+                <th scope="col">Сообщения</th>
+                <th scope="col">Рассылки</th>
+                <th scope="col">Получатели</th>
+                <th scope="col">Попытки</th>
+                <th scope="col">Успешных</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <th scope="row"></th>
+                <td><h5>{{ messages_count }}</h5></td>
+                <td><h5>{{ newsletters_count }}</h5></td>
+                <td><h5>{{ recipients_count }}</h5></td>
+                <td><h5>{{ attempts_total }}</h5></td>
+                <td><h5>{{ percent_success }} % </h5></td>
+            </tr>
+
+            </tbody>
+        </table>
+
+
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "home.html" %}
+    <title>Вход в систему</title>
+{% block content %}
+<div style=" display: flex; justify-content: center; align-items: center; height: 70vh; ">
+<div class="row text-center">
+    <h2>Вход в систему</h2>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="container col-6  ">
+            <label for="id_username">Ваш email:</label>
+            <input type="text" name="username" id="id_username"/>
+        </div>
+        <div class="container col-6  ">
+            <label for="id_password">Пароль:</label>
+            <input type="password" name="password" id="id_password"/>
+        </div>
+
+        <div class="container mt-4">
+            <button type="submit"> Войти</button>
+            <a href="/">Отмена</a>
+            <p><a href="{% url 'users:password_reset_form' %}"> Не помню пароль</a></p>
+        </div>
+    </form>
+
+</div>
+</div>
+{% endblock %}

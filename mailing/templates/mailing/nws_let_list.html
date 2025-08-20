@@ -1,0 +1,72 @@
+{% extends 'home.html'%}
+{% block title%}Рассылки{% endblock %}
+{% load static %}
+
+{% block content %}
+
+<style>
+    table td.status-create {background-color: #8af0f0 !important;}
+     table td.status-launched {background-color: #8af08c !important;}
+      table td.status-completed {background-color: #f0c28a !important;}
+      table td.status-locked {background-color: #a3a3a3 !important;}
+</style>
+
+<div class="card-header text-center">
+    <h2 class="my-0 font-weight-normal ">Рассылки</h2>
+    <a href="{% url 'mailing:newsletter_create' %}" class="btn btn-outline-dark btn-sm">Добавить</a>
+</div>
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-11">
+
+            <table class="table text-center w-100">
+                <thead>
+                <tr>
+                    <th scope="col">№</th>
+                    <th scope="col">Рассылка</th>
+                    <th scope="col">Тема</th>
+                    <th scope="col">Получатели</th>
+                    <th scope="col">Действие</th>
+                    <th scope="col">Статус</th>
+                    <th scope="col">. . .</th>
+                    <th scope="col">Период</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                {% for newsletter in newsletters %}
+                <tr>
+                    <th scope="row">{{ forloop.counter }}</th>
+                    <td>{{ newsletter.name }}</td>
+                    <td>{{ newsletter.message.message_topic }}</td>
+                    <td>{% for recipient in newsletter.recipients.all %}{{ recipient.email }}, {% endfor %}</td>
+                    <td>
+                        <form method="post" action="{% url 'mailing:newsletter_send' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ request.user.id }}">
+                            <input type="hidden" name="newsletter_id" value="{{ newsletter.id }}">
+                            <button type="submit" class="btn btn-outline-success btn-sm">Запустить</button>
+                        </form>
+                    </td>
+                    <td class=" {% if newsletter.status == 'create' %} status-create {% elif newsletter.status == 'launched' %} status-launched {% elif newsletter.status == 'completed' %} status-completed {% elif newsletter.status == 'locked' %} status-locked {% endif %}">
+                        {{ newsletter.get_status_display }}
+                    </td>
+
+                    <td>
+                        <a href="{% url 'mailing:newsletter_update' newsletter.pk %}"
+                           class="btn btn-outline-dark btn-sm">Редактировать</a>
+                        <a href="{% url 'mailing:newsletter_delete' newsletter.pk %}"
+                           class="btn btn-outline-danger btn-sm">Удалить</a>
+                    </td>
+                    <td>{{ newsletter.started_at|date:'j.n.Y'|default_if_none:"..." }} - {{ newsletter.stopped_at|date:'j.n.Y'|default_if_none:"..." }}</td>
+                </tr>
+                {% endfor %}
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
