@@ -1,0 +1,51 @@
+{% extends 'home.html'%}
+{% block title%}Пользователи{% endblock %}
+{% load static %}
+{% block content %}
+<div class="container col-8">
+
+    <div class="card-header">
+        <h2 class="my-0 font-weight-normal text-center">Пользователи сервиса (панель модератора)</h2>
+
+    </div>
+    <div class="container  text-center ">
+
+
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">№</th>
+                <th scope="col">Имя</th>
+                <th scope="col">Статус</th>
+                <th scope="col">Комментарий</th>
+                <th scope="col">. . .</th>
+                <th scope="col">Добавлен</th>
+
+
+            </tr>
+            </thead>
+            <tbody>
+
+            {% for us in users %}
+            <tr>
+                <th scope="row">{{ forloop.counter }}</th>
+                <td>{{ us.email }}</td>
+                <td>{{ us.get_user_status_display }}</td>
+                <td>{{ us.comment }}</td>
+
+
+                <td>
+                    <a href="{% url 'mailing:manager_user' us.pk %}" class=" btn btn-outline-dark btn-sm">Редактировать</a>
+
+                </td>
+                <td>{{ us.created_at }}</td>
+            </tr>
+            {% endfor %}
+
+            </tbody>
+        </table>
+        <a class="p-2 btn btn-outline-dark fixed-size-btn" href="{% url 'mailing:manager_all_newsletters' %}">Рассылки</a>
+    </div>
+</div>
+
+{% endblock %}

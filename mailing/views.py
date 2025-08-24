@@ -1,6 +1,8 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin, PermissionRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
 from django.http import HttpResponseRedirect
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, TemplateView, ListView
 from django.views.generic.edit import UpdateView, DeleteView, CreateView, FormView
@@ -8,6 +10,7 @@ from django.views.generic.edit import UpdateView, DeleteView, CreateView, FormVi
 from mailing.forms import MailingRecipientForm, YourMessageForm, NewsletterForm, StartNewsletterForm
 from mailing.models import MailingRecipient, YourMessage, Newsletter, AttemptSend
 from mailing.services import get_all_statistic
+from users.forms import UpdateCustomUserFormAdmin
 from users.models import CustomUser
 
 
@@ -211,7 +214,7 @@ class NewsletterListView(LoginRequiredMixin, ListView):
 
         user = self.request.user
 
-        if user.is_superuser or user.groups.filter(name='moderators').exists():
+        if user.is_superuser or user.groups.filter(name='managers').exists():
             queryset = Newsletter.objects.all()
             return queryset.select_related('owner').prefetch_related('recipients').all()
 
@@ -231,28 +234,63 @@ class NewsletterDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         """ Условия для удаления рассылки. """
 
         obj = self.get_object()
-        return obj.owner == self.request.user
+        return obj.owner == self.request.user or self.request.user.is_superuser
 
 
 # endregion
 
 # region Статистика
+class AttemptSendListView(LoginRequiredMixin, ListView):
+    """ Список попыток рассылки. """
+
+    model = AttemptSend
+    template_name = "attempt_send_all.html"
+    context_object_name = "attempts"
+
+    def get_queryset(self):
+        """ Условия для отображения попыток. """
+
+        user = self.request.user
+
+        if user.is_superuser or user.groups.filter(name='managers').exists():
+            return AttemptSend.objects.select_related('newsletter', 'recipient').all()
+
+        elif user.is_authenticated:
+            return AttemptSend.objects.select_related('newsletter', 'recipient', ).filter(newsletter__owner=user)
+
 
 class AttemptSendDetailView(LoginRequiredMixin, DetailView):
     """ Подробная информация попытки рассылки. """
 
     model = AttemptSend
-    template_name = "attempt_send.html"
-    context_object_name = "attempts"
+    template_name = "attempt_send_detail.html"
+    context_object_name = "attempt"
 
-    def get_queryset(self):
-        return AttemptSend.objects.select_related('newsletter', 'recipient').all()
+    def get_object(self, queryset=None):
+        """ Условия получения объекта. """
+
+        objct = super().get_object(queryset=queryset)
+
+        user = self.request.user
+
+        if user.is_superuser or user.groups.filter(name='managers').exists():
+            return objct
+
+        elif user.is_authenticated and hasattr(objct.newsletter, 'owner'):
+            if objct.newsletter.owner == user:
+                return objct
 
 
 class StatisticAllView(LoginRequiredMixin, TemplateView):
     """ Общая статистика текущего пользователя. """
 
     template_name = 'all_your_statistic.html'
+
+    def get(self, request, *args, **kwargs):
+        if request.user.groups.filter(name='moderators').exists():
+            return redirect(reverse_lazy('mailing:manager_all_newsletters'))
+
+        return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -262,26 +300,26 @@ class StatisticAllView(LoginRequiredMixin, TemplateView):
 
 
 class ManagerNewslettersListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    """ Просмотр всех клиентов и их рассылок. """
+    """ Просмотр всех рассылок. """
 
-    permission_required = 'mailing.watch_nws_let'
-    model = MailingRecipient
-    template_name = 'manager_users_and_newsletters.html'
-    context_object_name = 'users'
+    permission_required = 'mailing.change_nws_let'
+    model = Newsletter
+    template_name = 'manager_all_newsletters.html'
+    context_object_name = 'newsletters'
 
     def get_queryset(self):
         """ Получить всех пользователей и их рассылки. """
 
-        users = CustomUser.objects.prefetch_related('newsletter_set')
-        return users
+        queryset = Newsletter.objects.select_related('message', 'owner').all()
+        return queryset
 
 
 class ManagerUserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     """ Просмотр списка пользователей сервиса. """
 
-    permission_required = 'mailing.watch_users'
+    permission_required = 'mailing.change_nws_let'
     model = CustomUser
-    template_name = 'manager_user_list.html'
+    template_name = 'manager_all_users.html'
     context_object_name = 'users'
 
     def get_queryset(self):
@@ -293,11 +331,12 @@ class ManagerUserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView)
 class ManagerChangeStatusNewsletterView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     """ Изменение статуса рассылки. """
 
-    permission_required = 'mailing.change_newsletters'
+    permission_required = 'mailing.change_nws_let',
     model = Newsletter
     fields = ['status']
-    template_name = 'manager_change_status_newsletter.html'
-    success_url = reverse_lazy('mailing:manager_clients_and_newsletters')
+    template_name = 'manager_newsletter.html'
+    success_url = reverse_lazy('mailing:manager_all_newsletters')
+    context_object_name = 'newsletter'
 
     def get_context_data(self, **kwargs):
         """ Передача списка статусов в шаблон. """
@@ -307,10 +346,29 @@ class ManagerChangeStatusNewsletterView(LoginRequiredMixin, PermissionRequiredMi
         return context
 
 
+class ManagerChangeStatusCustomUserView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
+    """ Редактирование пользователя для модератора. """
+
+    template_name = "manager_user.html"
+    permission_required = "users.change_users",
+    model = CustomUser
+    form_class = UpdateCustomUserFormAdmin
+    success_url = reverse_lazy('mailing:manager_all_users')
+    context_object_name = 'user'
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+
+        if obj == self.request.user:
+            raise PermissionDenied("Вы не можете редактировать собственный профиль.")
+
+        return obj
+
+
 # endregion
 
 # region Запуск рассылки
-class SendNewsletterView(FormView):
+class SendNewsletterView(LoginRequiredMixin, FormView):
     """ Запуск рассылки. """
 
     form_class = StartNewsletterForm

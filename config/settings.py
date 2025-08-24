@@ -131,7 +131,7 @@ LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "users:login"
 LOGOUT_REDIRECT_URL = "/"
 
-#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' # TODO
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' # TODO
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # TODO
 EMAIL_HOST = 'smtp.yandex.ru'
 EMAIL_PORT = 465

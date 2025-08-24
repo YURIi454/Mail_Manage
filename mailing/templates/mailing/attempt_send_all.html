@@ -1,0 +1,47 @@
+{% extends 'home.html'%}
+{% block title%}Попытки рассылки{% endblock %}
+{% load static %}
+{% block content %}
+<div class="container col-8">
+
+    <div class="card-header">
+        <h2 class="my-0 font-weight-normal text-center">Попытки рассылки </h2>
+
+    </div>
+    <div class="container  text-center ">
+
+
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">№</th>
+                <th scope="col">Рассылка</th>
+                <th scope="col">Статус</th>
+                <th scope="col">Ответ сервера</th>
+                <th scope="col">. . .</th>
+
+            </tr>
+            </thead>
+            <tbody>
+
+            {% for atmp in attempts %}
+            <tr>
+                <th scope="row">{{ forloop.counter }}</th>
+                <td>{{ atmp.newsletter.name }}</td>
+                <td>{{ atmp.get_status_display }}</td>
+                <td>{{ atmp.server_response }}</td>
+
+                <td>
+                    <a href="{% url 'mailing:attempt_send_detail' atmp.pk %}" class=" btn btn-outline-dark btn-sm">Подробно</a>
+
+                </td>
+
+            </tr>
+            {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

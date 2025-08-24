@@ -1,31 +1,16 @@
 from uuid import uuid4
 
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.views import LoginView
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
 from django.views import View
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.views.generic import DetailView, TemplateView
+from django.views.generic import DetailView, ListView, TemplateView
 
 from users.forms import CreateCustomUserForm, UpdateCustomUserForm, UpdateCustomUserFormAdmin
 from users.models import CustomUser
 from users.services import register_user
-
-
-# class RequestForDeleteUser(LoginRequiredMixin, TemplateView):
-#     """ Заявка на удаление пользователя. """
-#
-#     template_name = "request_for_delete.html"
-#
-#     def post(self, request, *args, **kwargs):
-#         current_user = request.user
-#
-#         if current_user.is_authenticated and not current_user.is_superuser:  # TODO
-#             current_user.user_status = "for_delete"
-#             current_user.save()
-#             return reverse_lazy("home")  # TODO
-#
-#         return super().post(request, *args, **kwargs)  # TODO
 
 
 class CreateCustomUser(CreateView):
@@ -95,6 +80,18 @@ class DetailCustomUser(LoginRequiredMixin, DetailView):
                 ).get(pk=self.request.user.pk))
 
 
+class CustomUserList(UserPassesTestMixin, ListView):
+    """ Информация о пользователях. """
+
+    template_name = "all_users.html"
+    model = CustomUser
+    paginate_by = 10
+
+    def test_func(self):
+        """ Проверяем права доступа. """
+        return self.request.user.is_superuser or self.request.user.groups.filter(name='moderator').exists()
+
+
 class ActivateCustomUserView(View):
     """ Подтверждения аккаунта пользователя """
 
@@ -111,14 +108,3 @@ class ActivateCustomUserView(View):
         except Exception as e:
             print(f'Ошибка активации {e}')
             return redirect(reverse("users:login"))
-
-
-# def email_verification(request, token):
-#     """ Верификация пользователя. """
-#
-#     user = get_object_or_404(CustomUser, token=token)
-#     user.is_active = True
-#     user.user_status = "active"
-#     user.save()
-#
-#     return redirect(reverse("users:login"))
