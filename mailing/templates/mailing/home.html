@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Сервис рассылок{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+
+</head>
+{% load static %}
+{% include 'header.html' %}
+
+<body>
+
+{% block content %}
+{% if request.user.is_authenticated %}
+{% else %}
+<div style=" display: flex; justify-content: center; align-items: center; height: 70vh; ">
+<h3>Рады Вас видеть на нашем сервисе рассылок!!<br/>
+    <br/>
+    Выполните <a href="{% url 'users:login' %}">вход</a> или
+    если Вы тут впервые <a href="{% url 'users:create_user' %}">зарегистрируйтесь!</a></h3>
+</div>
+{% endif %}
+{% endblock %}
+
+</body>
+
+</html>

@@ -1,0 +1,21 @@
+{% extends 'home.html'%}
+{% block title%}{{ attempt.newsletter.name }}{% endblock %}
+{% load static %}
+{% block content %}
+<div class="container col-8">
+
+    <div class="card-header">
+        <h3 class="my-0 font-weight-normal text-center">Попытка рассылки "{{ attempt.newsletter.name }}"</h3>
+        <h4 class="my-0 font-weight-normal text-center">Тема рассылки - {{ attempt.newsletter.message.message_topic }} </h4>
+        <h4 class="my-0 font-weight-normal text-center">Статус - {{ attempt.get_status_display }} </h4>
+        <h4 class="my-0 font-weight-normal text-center">Создана - {{ attempt.created_at }} </h4>
+        <h4 class="my-0 font-weight-normal text-center">Ответ сервера - {{ attempt.server_response }} </h4><br>
+        <div class="text-center ">
+            <a class="p-2 btn btn-outline-dark fixed-size-btn" href="{% url 'mailing:attempt_send_all' %}">Назад</a>
+
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

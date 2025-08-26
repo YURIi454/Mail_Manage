@@ -1,0 +1,42 @@
+{% extends 'home.html'%}
+{% block title%}Получатели{% endblock %}
+{% load static %}
+{% block content %}
+<div class="container col-8">
+
+    <div class="card-header">
+        <h2 class="my-0 font-weight-normal text-center">Получатели</h2>
+    </div>
+    <div class="container text-center">
+     <a href="{% url 'mailing:recipient_create' %}" class=" btn btn-outline-dark btn-sm">Добавить</a>
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">№</th>
+                <th scope="col">Email</th>
+                <th scope="col">Данные получателя</th>
+                <th scope="col">Комментарий</th>
+                <th scope="col">. . .</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            {% for rec in recipients %}
+            <tr>
+                <th scope="row">{{ forloop.counter }}</th>
+                <td>{{ rec.email }}</td>
+                <td>{{ rec.recipient_data }}</td>
+                <td>{{ rec.comment }}</td>
+                      <td>
+                    <a href="{% url 'mailing:recipient_update' rec.pk %}" class=" btn btn-outline-dark btn-sm">Редактировать</a>
+                    <a href="{% url 'mailing:recipient_delete' rec.pk %}" class="btn btn-outline-danger btn-sm">Удалить</a>
+                </td>
+            </tr>
+            {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

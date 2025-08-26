@@ -1,0 +1,23 @@
+{% extends 'home.html'%}
+
+{% block title%}Ваш профиль {{ user.name }}{% endblock %}
+{% load static %}
+{% block content %}
+
+<div class="container col-4 text-center md-3 py-3">
+    <div class="card mb-4 box-shadow ">
+        <div class="card-header">
+            <h4 class="my-0 font-weight-normal text-center">
+                Ваш профиль на странице
+            </h4>
+
+        </div>
+            <h6> Имя:{{ user.username }}.</h6>
+            <h6> Добавлен:{{ user.created_at }}.</h6>
+
+
+        </div>
+    </div>
+
+
+{% endblock %}

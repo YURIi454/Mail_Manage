@@ -1,0 +1,44 @@
+{% extends 'home.html'%}
+{% block title%}Сообщения{% endblock %}
+{% load static %}
+{% block content %}
+<div class="container col-8">
+
+    <div class="card-header">
+        <h2 class="my-0 font-weight-normal text-center">Сообщения </h2>
+
+    </div>
+    <div class="container  text-center ">
+        <a href="{% url 'mailing:message_create' %}" class=" btn btn-outline-dark btn-sm">Добавить</a>
+
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">№</th>
+                <th scope="col">Тема</th>
+                <th scope="col">Сообщение</th>
+                <th scope="col">. . .</th>
+
+            </tr>
+            </thead>
+            <tbody>
+
+            {% for msg in messages %}
+            <tr>
+                <th scope="row">{{ forloop.counter }}</th>
+                <td>{{ msg.message_topic }}</td>
+                <td>{{ msg.message }}</td>
+                <td>
+                    <a href="{% url 'mailing:message_update' msg.pk %}" class=" btn btn-outline-dark btn-sm">Редактировать</a>
+                    <a href="{% url 'mailing:message_delete' msg.pk %}" class="btn btn-outline-danger btn-sm">Удалить</a>
+                </td>
+
+            </tr>
+            {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
