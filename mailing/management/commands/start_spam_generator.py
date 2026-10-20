@@ -1,11 +1,9 @@
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.mail import send_mass_mail
+from django.conf import settings
+from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from datetime import timedelta
-from config.settings import EMAIL_HOST_USER
 
-from mailing.models import Newsletter, AttemptSend, MailingRecipient
+from mailing.models import AttemptSend, Newsletter
 
 
 class Command(BaseCommand):
@@ -16,85 +14,79 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--user_id',
-            type=int,
-            required=True,
-            help="ID пользователя.",
-        )
-        parser.add_argument(
-            "--newsletter_id",
+            '--newsletter_id',
             type=int,
             required=True,
             help="ID рассылки.",
         )
+        parser.add_argument(
+            "--owner_id",
+            type=int,
+            required=False,
+            default=None,
+            help="ID владельца рассылки (для проверки прав).",
+        )
 
     def handle(self, *args, **options):
-        user_id = options['user_id']
-        newsletter_id = options["newsletter_id"]
+        newsletter_id = options['newsletter_id']
+        owner_id = options.get('owner_id')
 
         try:
-            newsletter = Newsletter.objects.get(pk=newsletter_id, owner__pk=user_id)
-        except ObjectDoesNotExist:
-            self.stdout.write(f"Рассылка с номером ({newsletter_id}) не найдена.")
+            if owner_id:
+                newsletter = Newsletter.objects.prefetch_related('recipients').get(
+                    pk=newsletter_id, owner_id=owner_id,
+                )
+            else:
+                newsletter = Newsletter.objects.prefetch_related('recipients').get(pk=newsletter_id)
+        except Newsletter.DoesNotExist:
+            self.stdout.write(self.style.ERROR(f"Рассылка с номером ({newsletter_id}) не найдена."))
             return
 
-        messages = self.get_mass_message(newsletter)
+        now = timezone.now()
 
-        if len(messages) > 0:
+        if not (newsletter.start_time <= now <= newsletter.end_time):
+            self.stderr.write(self.style.ERROR(
+                f"Рассылка ({newsletter_id}) не запущена: текущее время вне периода отправки "
+                f"({newsletter.start_time:%d.%m.%Y %H:%M} — {newsletter.end_time:%d.%m.%Y %H:%M})."
+            ))
+            return
+
+        if newsletter.message is None:
+            self.stderr.write(self.style.ERROR(f"У рассылки ({newsletter_id}) не указано сообщение."))
+            return
+
+        recipients = list(newsletter.recipients.all())
+
+        if not recipients:
+            self.stderr.write(self.style.WARNING(f"У рассылки ({newsletter_id}) нет получателей."))
+            return
+
+        subject = newsletter.message.message_topic
+        body = newsletter.message.message or ""
+        from_email = settings.DEFAULT_FROM_EMAIL
+
+        success_count = 0
+
+        for recipient in recipients:
             try:
-                result = send_mass_mail(messages)
-
-                if newsletter.status != 'launched':
-
-                    newsletter.status = 'launched'
-                    newsletter.started_at = timezone.now()
-                    newsletter.stopped_at = timezone.now() + timedelta(days=30)
-                    newsletter.save()
-
-                else:
-                    self.stdout.write(f"Рассылка ({newsletter_id}) запущена.")
-
-                for message_data in messages:
-                    topic, _, _, _ = message_data
-
-                    attempt_send = AttemptSend(
-                        newsletter=newsletter,
-                        recipient=MailingRecipient.objects.first(),
-                        status="success" if result else "fail",
-                        server_response=str(result),
-                    )
-                    attempt_send.save()
-
+                send_mail(subject, body, from_email, [recipient.email], fail_silently=False)
             except Exception as e:
-                print(f"Ошибка отправки: {e}")
+                AttemptSend.objects.create(
+                    newsletter=newsletter,
+                    recipient=recipient,
+                    status="fail",
+                    server_response=f"{type(e).__name__}: {e}",
+                )
+                self.stderr.write(self.style.WARNING(f"Ошибка отправки на {recipient.email}: {e}"))
+            else:
+                AttemptSend.objects.create(
+                    newsletter=newsletter,
+                    recipient=recipient,
+                    status="success",
+                    server_response="Письмо принято почтовым сервером.",
+                )
+                success_count += 1
 
-                for message_data in messages:
-                    topic, _, _, _ = message_data
-
-                    attempt_send = AttemptSend(
-                        newsletter=newsletter,
-                        recipient=MailingRecipient.objects.first(),
-                        status="fail",
-                        server_response=f"{type(e).__name__}: {str(e)}",
-                    )
-                    attempt_send.save()
-
-        else:
-            print("Нет сообщений для отправки.")
-
-    def get_mass_message(self, newsletter):
-        """ Создание данных для массового письма. """
-
-        mass_mess_tuple = []
-
-        your_topic = newsletter.message.message_topic
-        your_message = newsletter.message.message
-        from_email = EMAIL_HOST_USER
-        recipients = list(newsletter.recipients.values_list("email", flat=True))
-
-        if not your_topic or not recipients:
-            raise ValueError("Список получателей пуст.")
-
-        mass_mess_tuple.append((your_topic, your_message, from_email, recipients))
-
-        return tuple(mass_mess_tuple)
+        self.stdout.write(self.style.SUCCESS(
+            f"Рассылка ({newsletter_id}): успешно отправлено {success_count} из {len(recipients)}."
+        ))

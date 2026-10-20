@@ -1,16 +1,19 @@
+import logging
 from uuid import uuid4
 
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
-from django.contrib.auth.views import LoginView
-from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse_lazy, reverse
+from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
 from django.views import View
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.views.generic import DetailView, ListView, TemplateView
+from django.views.generic import DetailView
+from django.views.generic.edit import CreateView, UpdateView
 
-from users.forms import CreateCustomUserForm, UpdateCustomUserForm, UpdateCustomUserFormAdmin
+from users.forms import CreateCustomUserForm, UpdateCustomUserForm
 from users.models import CustomUser
-from users.services import register_user
+
+logger = logging.getLogger(__name__)
 
 
 class CreateCustomUser(CreateView):
@@ -22,21 +25,31 @@ class CreateCustomUser(CreateView):
     success_url = reverse_lazy('mailing:statistic')
 
     def form_valid(self, form):
-        cleaned_data = form.cleaned_data
-        email = cleaned_data['email']
-        password = cleaned_data['password1']
+        """ Создание неактивного пользователя и отправка письма подтверждения. """
 
+        email = form.cleaned_data['email']
         token = str(uuid4())
 
         user = form.save(commit=False)
         user.username = email
-        user.set_password(password)
         user.activate_token = token
         user.save()
 
-        print(f"\n\nСсылка подтверждения отправлена на адрес {email}. "
-              f"Перейдите по ссылке для активации:\n"
-              f"{self.request.build_absolute_uri(reverse_lazy('users:activate_user', kwargs={'token': token}))}\n\n")
+        activation_url = self.request.build_absolute_uri(
+            reverse('users:activate_user', kwargs={'token': token})
+        )
+
+        try:
+            send_mail(
+                subject='Подтверждение регистрации',
+                message=f'Для активации аккаунта перейдите по ссылке:\n{activation_url}',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        except Exception:
+            logger.error('Не удалось отправить письмо подтверждения на %s. Ссылка: %s',
+                         email, activation_url, exc_info=True)
 
         return super().form_valid(form)
 
@@ -55,18 +68,6 @@ class UpdateCustomUser(LoginRequiredMixin, UpdateView):
                 ).get(pk=self.request.user.pk))
 
 
-class UpdateCustomUserModer(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
-    """ Редактирование пользователя для модератора. """
-
-    template_name = "update_user.html"
-    permission_required = ["watch_users", "change_users", "delete_users", ]
-    model = CustomUser
-    form_class = UpdateCustomUserFormAdmin
-
-    def get_object(self, queryset=None):
-        return CustomUser.objects.only('is_active', 'user_status', 'comment', ).get(pk=self.request.user.pk)
-
-
 class DetailCustomUser(LoginRequiredMixin, DetailView):
     """ Информация о пользователе. """
 
@@ -78,18 +79,6 @@ class DetailCustomUser(LoginRequiredMixin, DetailView):
                     (
                     'email', 'first_name', 'last_name', 'is_active', 'user_status', 'comment', 'created_at',
                 ).get(pk=self.request.user.pk))
-
-
-class CustomUserList(UserPassesTestMixin, ListView):
-    """ Информация о пользователях. """
-
-    template_name = "all_users.html"
-    model = CustomUser
-    paginate_by = 10
-
-    def test_func(self):
-        """ Проверяем права доступа. """
-        return self.request.user.is_superuser or self.request.user.groups.filter(name='moderator').exists()
 
 
 class ActivateCustomUserView(View):
@@ -106,5 +95,5 @@ class ActivateCustomUserView(View):
             return redirect("users:login")
 
         except Exception as e:
-            print(f'Ошибка активации {e}')
+            logger.warning('Ошибка активации пользователя: %s', e)
             return redirect(reverse("users:login"))

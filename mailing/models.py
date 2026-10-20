@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from users.models import CustomUser
 
@@ -64,11 +65,11 @@ class Newsletter(models.Model):
     recipients = models.ManyToManyField(MailingRecipient, verbose_name='получатель')
     message = models.ForeignKey(YourMessage, blank=True, null=True, on_delete=models.SET_NULL, verbose_name='сообщение')
     owner = models.ForeignKey(CustomUser, blank=True, null=True, on_delete=models.SET_NULL, verbose_name='владелец')
-    status = models.CharField(max_length=15, choices=status_list, default='create', verbose_name='статус')
     status_comment = models.TextField(null=True, blank=True, verbose_name='комментарий к статусу')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='создана')
-    started_at = models.DateTimeField(null=True, blank=True, verbose_name='начало')
-    stopped_at = models.DateTimeField(null=True, blank=True, verbose_name='завершение')
+    start_time = models.DateTimeField(verbose_name='дата и время начала отправки')
+    end_time = models.DateTimeField(verbose_name='дата и время окончания отправки')
+    is_locked = models.BooleanField(default=False, verbose_name='отключена')
 
     def __str__(self):
         """Вывод информации."""
@@ -77,6 +78,32 @@ class Newsletter(models.Model):
             return f"{self.get_status_display()} ({self.status_comment})"
         else:
             return f"{self.get_status_display()}"
+
+    @property
+    def status(self):
+        """ Динамический статус рассылки. """
+
+        if self.is_locked:
+            return 'locked'
+
+        now = timezone.now()
+
+        if now < self.start_time:
+            return 'create'
+        if now <= self.end_time:
+            return 'launched'
+        return 'completed'
+
+    def get_status_display(self):
+        """ Текстовое отображение динамического статуса. """
+
+        return dict(self.status_list).get(self.status, self.status)
+
+    @property
+    def is_active(self):
+        """ Активна ли рассылка в текущий момент. """
+
+        return self.status == 'launched'
 
     class Meta:
         verbose_name = 'Рассылка'
@@ -104,7 +131,7 @@ class AttemptSend(models.Model):
                                   verbose_name='получатель')
     status = models.CharField(choices=send_status, default='not_used', verbose_name='статус')
     server_response = models.TextField(null=True, blank=True, verbose_name='ответ сервера')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='создана')
+    attempt_time = models.DateTimeField(auto_now_add=True, verbose_name='дата и время попытки')
 
     def __str__(self):
         """ Вывод информации. """
@@ -114,7 +141,7 @@ class AttemptSend(models.Model):
     class Meta:
         verbose_name = 'Попытка'
         verbose_name_plural = 'Попытки'
-        ordering = ['created_at']
+        ordering = ['attempt_time']
         permissions = [
             ('change_attempt', 'Редактирование попытки'),
             ('watch_attempt', 'Просмотр попытки'),

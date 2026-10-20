@@ -1,18 +1,18 @@
-from django.urls import path, reverse_lazy
 from django.contrib.auth.views import (
     LoginView,
     LogoutView,
-    PasswordResetView,
-    PasswordResetDoneView,
+    PasswordResetCompleteView,
     PasswordResetConfirmView,
-    PasswordResetCompleteView
+    PasswordResetDoneView,
+    PasswordResetView,
 )
+from django.urls import path, reverse_lazy
 
 from users.views import (
-    UpdateCustomUser,
+    ActivateCustomUserView,
     CreateCustomUser,
     DetailCustomUser,
-    ActivateCustomUserView,
+    UpdateCustomUser,
 )
 
 app_name = "users"

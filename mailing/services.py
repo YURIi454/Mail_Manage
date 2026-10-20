@@ -1,43 +1,67 @@
-from django.db.models import Count, Case, When, Value, IntegerField
+from django.utils import timezone
 
-from mailing.models import Newsletter
+from mailing.models import AttemptSend, MailingRecipient, Newsletter
+from users.services import is_manager
+
+
+def get_main_indicators(user):
+    """ Показатели для главной страницы. """
+
+    now = timezone.now()
+    newsletters = _get_newsletters(user)
+
+    total_newsletters = newsletters.count()
+    active_newsletters = newsletters.filter(
+        is_locked=False,
+        start_time__lte=now,
+        end_time__gte=now,
+    ).count()
+
+    if is_manager(user):
+        recipients = MailingRecipient.objects.all()
+    else:
+        recipients = MailingRecipient.objects.filter(owner=user)
+
+    return {
+        'total_newsletters': total_newsletters,
+        'active_newsletters': active_newsletters,
+        'unique_recipients': recipients.distinct().count(),
+    }
 
 
 def get_all_statistic(current_user):
     """ Получение полной статистики. """
 
-    if not current_user.is_superuser:
-        newsletters = Newsletter.objects.filter(owner=current_user)
-    else:
-        newsletters = Newsletter.objects.all()
+    newsletters = _get_newsletters(current_user)
+    attempts = AttemptSend.objects.filter(newsletter__in=newsletters)
 
-    statistics = newsletters.aggregate(
-        messages_count=Count('message', distinct=True),
-        recipients_count=Count('recipients', distinct=True),
-        attempts_not_used=Count(Case(When(attemptsend__status='not_used', then=Value(1)), output_field=IntegerField())),
-        attempts_success=Count(Case(When(attemptsend__status='success', then=Value(1)), output_field=IntegerField())),
-        attempts_fail=Count(Case(When(attemptsend__status='fail', then=Value(1)), output_field=IntegerField())),
-        attempts_locked=Count(Case(When(attemptsend__status='locked', then=Value(1)), output_field=IntegerField())),
-        total_newsletters=Count('*'),
-        total_attempts=Count('attemptsend')
-    )
+    total_attempts = attempts.count()
+    attempts_success = attempts.filter(status='success').count()
+    attempts_fail = attempts.filter(status='fail').count()
+    attempts_not_used = attempts.filter(status='not_used').count()
 
-    attempts_total = statistics.get('total_attempts', 0)
-    attempts_success = statistics.get('attempts_success', 0)
-
-    if attempts_total > 0 and attempts_success is not None:
-        percent_success = round((attempts_success / attempts_total) * 100, 2)
+    if total_attempts:
+        percent_success = round((attempts_success / total_attempts) * 100, 2)
     else:
         percent_success = 0
 
     return {
-        'messages_count': statistics.get('messages_count', 0),
-        'newsletters_count': statistics.get('total_newsletters', 0),
-        'recipients_count': statistics.get('recipients_count', 0),
-        'attempts_not_used': statistics.get('attempts_not_used', 0),
+        'messages_count': newsletters.filter(message__isnull=False).values('message').distinct().count(),
+        'newsletters_count': newsletters.count(),
+        'recipients_count': MailingRecipient.objects.filter(newsletter__in=newsletters).distinct().count(),
+        'attempts_not_used': attempts_not_used,
         'attempts_success': attempts_success,
-        'attempts_fail': statistics.get('attempts_fail', 0),
-        'attempts_locked': statistics.get('attempts_locked', 0),
-        'attempts_total': attempts_total,
+        'attempts_fail': attempts_fail,
+        'attempts_total': total_attempts,
+        'sent_count': attempts_success,
         'percent_success': percent_success,
     }
+
+
+def _get_newsletters(user):
+    """ Рассылки, доступные пользователю. """
+
+    if is_manager(user):
+        return Newsletter.objects.all()
+
+    return Newsletter.objects.filter(owner=user)
