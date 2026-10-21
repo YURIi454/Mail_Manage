@@ -42,29 +42,55 @@
                     <td>{{ newsletter.message.message_topic }}</td>
                     <td>{% for recipient in newsletter.recipients.all %}{{ recipient.email }}, {% endfor %}</td>
                     <td>
+                        {% if newsletter.owner == request.user or request.user.is_superuser %}
+                        {% if newsletter.status == 'create' or newsletter.status == 'launched' %}
                         <form method="post" action="{% url 'mailing:newsletter_send' %}">
                             {% csrf_token %}
-                            <input type="hidden" name="user_id" value="{{ request.user.id }}">
                             <input type="hidden" name="newsletter_id" value="{{ newsletter.id }}">
                             <button type="submit" class="btn btn-outline-success btn-sm">Запустить</button>
                         </form>
+                        {% endif %}
+                        {% endif %}
                     </td>
                     <td class=" {% if newsletter.status == 'create' %} status-create {% elif newsletter.status == 'launched' %} status-launched {% elif newsletter.status == 'completed' %} status-completed {% elif newsletter.status == 'locked' %} status-locked {% endif %}">
                         {{ newsletter.get_status_display }}
                     </td>
 
                     <td>
+                        {% if newsletter.owner == request.user or request.user.is_superuser %}
                         <a href="{% url 'mailing:newsletter_update' newsletter.pk %}"
                            class="btn btn-outline-dark btn-sm">Редактировать</a>
                         <a href="{% url 'mailing:newsletter_delete' newsletter.pk %}"
                            class="btn btn-outline-danger btn-sm">Удалить</a>
+                        {% endif %}
+                        {% if perms.mailing.change_nws_let %}
+                        <a href="{% url 'mailing:manager_newsletter' newsletter.pk %}"
+                           class="btn btn-outline-warning btn-sm">Отключить</a>
+                        {% endif %}
                     </td>
-                    <td>{{ newsletter.started_at|date:'j.n.Y'|default_if_none:"..." }} - {{ newsletter.stopped_at|date:'j.n.Y'|default_if_none:"..." }}</td>
+                    <td>{{ newsletter.start_time|date:'j.n.Y H:i' }} - {{ newsletter.end_time|date:'j.n.Y H:i' }}</td>
                 </tr>
                 {% endfor %}
 
                 </tbody>
             </table>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Страница {{ page_obj.number }}
+                        из {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
         </div>
     </div>
 </div>

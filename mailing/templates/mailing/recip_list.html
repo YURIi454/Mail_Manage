@@ -28,8 +28,10 @@
                 <td>{{ rec.recipient_data }}</td>
                 <td>{{ rec.comment }}</td>
                       <td>
+                    {% if rec.owner == request.user or request.user.is_superuser %}
                     <a href="{% url 'mailing:recipient_update' rec.pk %}" class=" btn btn-outline-dark btn-sm">Редактировать</a>
                     <a href="{% url 'mailing:recipient_delete' rec.pk %}" class="btn btn-outline-danger btn-sm">Удалить</a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

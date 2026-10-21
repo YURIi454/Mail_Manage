@@ -1,4 +1,4 @@
-from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 
 from users.models import CustomUser
 
@@ -11,7 +11,7 @@ class CreateCustomUserForm(UserCreationForm):
         fields = ('email', 'username', 'first_name', 'last_name', 'password1', 'password2')
 
     def __init__(self, *args, **kwargs):
-        super(CreateCustomUserForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.fields["username"].widget.attrs.update(
             {'class': 'form-control',
@@ -54,7 +54,7 @@ class UpdateCustomUserForm(UserChangeForm):
         fields = ('email', 'username', 'first_name', 'last_name',)
 
     def __init__(self, *args, **kwargs):
-        super(UpdateCustomUserForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.fields["username"].widget.attrs.update(
             {'class': 'form-control',

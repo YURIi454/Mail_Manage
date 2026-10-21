@@ -1,6 +1,10 @@
-from django.core.management.base import BaseCommand
+from datetime import timedelta
+
 from django.contrib.auth.models import Group, Permission
-from mailing.models import YourMessage, MailingRecipient, Newsletter
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+
+from mailing.models import MailingRecipient, Newsletter, YourMessage
 from users.models import CustomUser
 
 
@@ -24,7 +28,7 @@ class Command(BaseCommand):
         users = []
         for i in range(3):
             username = f'user{i + 1}'
-            password = 'password123'
+            password = 'password123'  # noqa: S105
             email = f'{username}@user.com'
             status = CustomUser.user_status_list[i % len(CustomUser.user_status_list)][0]
 
@@ -65,7 +69,7 @@ class Command(BaseCommand):
         for user in users:
             for j in range(2):
                 topic = f'Сообщение №{j + 1} от {user.username}'
-                text = f'Это сообщение создано автоматически для тестирования системы.'
+                text = 'Это сообщение создано автоматически для тестирования системы.'
                 message = YourMessage.objects.create(
                     message_topic=topic,
                     message=text,
@@ -86,10 +90,11 @@ class Command(BaseCommand):
                 recipients.append(recipient)
 
         newsletter = Newsletter.objects.create(
-            name=f'Тестовая рассылка',
+            name='Тестовая рассылка',
             message=messages[0],
             owner=users[0],
-            status='create'
+            start_time=timezone.now(),
+            end_time=timezone.now() + timedelta(days=30),
         )
         newsletter.recipients.set([recipients[0], recipients[1]])
 
